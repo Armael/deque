@@ -147,29 +147,15 @@ yellow_unsnoc (Yellowish buf) with buf => {
   yellow_unsnoc _ (B4 a b c d) := (Any (B3 a b c), d)
 }.
 
-Equations buffer_is_empty {A C} : buffer A C -> bool :=
-  buffer_is_empty B0 := true;
-  buffer_is_empty _ := false.
-
-Equations buffer_uncons_unsafe {A C} (buf: buffer A C) (_: buffer_is_empty buf = false) : A * any_buffer A :=
-  buffer_uncons_unsafe B0 eq := _;
-  buffer_uncons_unsafe (B5 a b c d e) _ := (a, (Any (B4 b c d e)));
-  buffer_uncons_unsafe buf _ := yellow_uncons (Yellowish buf).
-Next Obligation. all: now simp buffer_is_empty in eq. Qed.
-
-Equations buffer_unsnoc_unsafe {A C} (buf: buffer A C) (_: buffer_is_empty buf = false) : any_buffer A * A :=
-  buffer_unsnoc_unsafe B0 eq := _;
-  buffer_unsnoc_unsafe (B5 a b c d e) _ := (Any (B4 a b c d), e);
-  buffer_unsnoc_unsafe buf _ := yellow_unsnoc (Yellowish buf).
-Next Obligation. all: now simp buffer_is_empty in eq. Qed.
-
 Equations buffer_uncons {A C} : buffer A C -> option (A * any_buffer A) :=
 buffer_uncons B0 := None;
-buffer_uncons buf := Some (buffer_uncons_unsafe buf eq_refl).
+buffer_uncons (B5 a b c d e) := Some (a, Any (B4 b c d e));
+buffer_uncons buf := Some (yellow_uncons (Yellowish buf)).
 
 Equations buffer_unsnoc {A C} : buffer A C -> option (any_buffer A * A) :=
 buffer_unsnoc B0 := None;
-buffer_unsnoc buf := Some (buffer_unsnoc_unsafe buf eq_refl).
+buffer_unsnoc (B5 a b c d e) := Some (Any (B4 a b c d), e);
+buffer_unsnoc buf := Some (yellow_unsnoc (Yellowish buf)).
 
 Equations prefix_rot {A C} : A -> buffer A C -> buffer A C * A :=
 prefix_rot x B0 := (B0, x);
@@ -379,6 +365,8 @@ Equations red {A B: Type} {C1 Y2 K2 C3 : phantom} :
 :=
 red p1 child s1 k := T (green_of_red (R (Red p1 child s1) k)).
 
+Module S.
+
 Equations cons {A: Type} : A -> s A -> s A :=
 cons x (T (Small buf)) :=
   T (buffer_cons x buf);
@@ -397,30 +385,28 @@ snoc (T (Y (Yellow p1 child s1) k)) x :=
   let 'Any s1 := yellow_suffix_snoc (Yellowish s1) x in
   red p1 child s1 k.
 
-Equations s_is_empty {A} (dq: s A) : bool :=
-s_is_empty (T (Small buf)) := buffer_is_empty buf;
-s_is_empty _ := false.
-
-Equations uncons_unsafe {A: Type} (dq: s A) (_: s_is_empty dq = false): A * s A :=
-uncons_unsafe (T (Small buf)) Hne :=
-  let '(x, Any buf') := buffer_uncons_unsafe buf _ in
-  (x, T (Small buf'));
-uncons_unsafe (T (G (Green p1 child s1) k)) _ :=
+Equations uncons {A: Type} (dq: s A) : option (A * s A) :=
+uncons (T (Small buf)) with (buffer_uncons buf) => {
+  uncons _ None := None;
+  uncons _ (Some (x, Any buf')) := Some (x, T (Small buf'))
+};
+uncons (T (G (Green p1 child s1) k)) :=
   let '(x, Yellowish p1) := green_uncons p1 in
-  (x, yellow p1 child s1 k);
-uncons_unsafe (T (Y (Yellow p1 child s1) k)) _ :=
+  Some (x, yellow p1 child s1 k);
+uncons (T (Y (Yellow p1 child s1) k)) :=
   let '(x, Any p1) := yellow_uncons (Yellowish p1) in
-  (x, red p1 child s1 k).
-Next Obligation. intros *. simp s_is_empty. Qed.
+  Some (x, red p1 child s1 k).
 
-Equations unsnoc_unsafe {A : Type} (dq: s A) (_ : s_is_empty dq = false): s A * A :=
-unsnoc_unsafe (T (Small buf)) Hne :=
-  let '(Any buf', x) := buffer_unsnoc_unsafe buf _ in
-  (T (Small buf'), x);
-unsnoc_unsafe (T (G (Green p1 child s1) k)) _ :=
+Equations unsnoc {A : Type} (dq: s A) : option (s A * A) :=
+unsnoc (T (Small buf)) with (buffer_unsnoc buf) => {
+  unsnoc _ None := None;
+  unsnoc _ (Some (Any buf', x)) := Some (T (Small buf'), x)
+};
+unsnoc (T (G (Green p1 child s1) k)) :=
   let '(Yellowish s1, x) := green_unsnoc s1 in
-  (yellow p1 child s1 k, x);
-unsnoc_unsafe (T (Y (Yellow p1 child s1) k)) _ :=
+  Some (yellow p1 child s1 k, x);
+unsnoc (T (Y (Yellow p1 child s1) k)) :=
   let '(Any s1, x) := yellow_unsnoc (Yellowish s1) in
-  (red p1 child s1 k, x).
-Next Obligation. intros *. simp s_is_empty. Qed.
+  Some (red p1 child s1 k, x).
+
+End S.

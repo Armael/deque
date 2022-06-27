@@ -164,36 +164,6 @@ Qed.
 (*   funelim (yellow_unsnoc buf); unfold snoc_seq; now simp yellow_unsnoc yellow_buffer_seq buffer_seq. *)
 (* Qed. *)
 
-Lemma buffer_uncons_unsafe_correct A C (buf:buffer A C) (ne: buffer_is_empty buf = false) x buf':
-  buffer_uncons_unsafe buf ne = (x, buf') ->
-  buffer_seq buf = x :: any_buffer_seq buf'.
-Proof.
-  funelim (buffer_uncons_unsafe buf ne); simp buffer_uncons_unsafe yellow_uncons.
-  now inversion eq.
-  all: inversion 1; subst; now simp buffer_seq any_buffer_seq.
-Qed.
-
-(* Lemma buffer_uncons_unsafe_correct' A C (buf:buffer A C) (ne: buffer_is_empty buf = false) : *)
-(*   cons_seq any_buffer_seq (buffer_uncons_unsafe buf ne) = buffer_seq buf. *)
-(* Proof. *)
-(*   funelim (buffer_uncons_unsafe buf ne); unfold cons_seq; now simp buffer_uncons_unsafe yellow_uncons. *)
-(* Qed. *)
-
-Lemma buffer_unsnoc_unsafe_correct A C (buf:buffer A C) (ne: buffer_is_empty buf = false) x buf':
-  buffer_unsnoc_unsafe buf ne = (buf', x) ->
-  buffer_seq buf = any_buffer_seq buf' ++ [x].
-Proof.
-  funelim (buffer_unsnoc_unsafe buf ne); simp buffer_unsnoc_unsafe yellow_uncons.
-  now inversion eq.
-  all: inversion 1; subst; now simp buffer_seq any_buffer_seq.
-Qed.
-
-(* Lemma buffer_unsnoc_unsafe_correct' A C (buf:buffer A C) (ne: buffer_is_empty buf = false) : *)
-(*   snoc_seq any_buffer_seq (buffer_unsnoc_unsafe buf ne) = buffer_seq buf. *)
-(* Proof. *)
-(*   funelim (buffer_unsnoc_unsafe buf ne); unfold snoc_seq; now simp buffer_snoc_unsafe yellow_uncons. *)
-(* Qed. *)
-
 Lemma buffer_uncons_correct A C (buf:buffer A C) :
   option_seq (cons_seq any_buffer_seq) (buffer_uncons buf) = buffer_seq buf.
 Proof.
@@ -517,10 +487,12 @@ Proof.
   rewrite green_of_red_correct. now simp kont_seq.
 Qed.
 
+Module S.
+
 Lemma cons_correct A (x:A) s :
-  s_seq (cons x s) = x :: s_seq s.
+  s_seq (S.cons x s) = x :: s_seq s.
 Proof.
-  funelim (cons x s); simp cons s_seq yellow red kont_seq deque_seq.
+  funelim (S.cons x s); simp cons s_seq yellow red kont_seq deque_seq.
   { rewrite buffer_cons_correct //. }
   { destruct (deque_seq child) as [[? ?] ?]. simp kont_seq deque_seq.
     rewrite green_prefix_cons_correct. rewrite -!app_assoc -app_comm_cons.
@@ -535,9 +507,9 @@ Proof.
 Qed.
 
 Lemma snoc_correct A s (x:A) :
-  s_seq (snoc s x) = s_seq s ++ [x].
+  s_seq (S.snoc s x) = s_seq s ++ [x].
 Proof.
-  funelim (snoc s x); simp snoc s_seq yellow red kont_seq deque_seq.
+  funelim (S.snoc s x); simp snoc s_seq yellow red kont_seq deque_seq.
   { rewrite buffer_snoc_correct //. }
   { destruct (deque_seq child) as [[? ?] ?]. simp kont_seq deque_seq.
     rewrite green_suffix_snoc_correct ensure_green_correct -!app_assoc //. }
@@ -548,17 +520,12 @@ Proof.
     rewrite Hsuffix in HH. simp any_buffer_seq in HH. rewrite HH -!app_assoc //. }
 Qed.
 
-Lemma uncons_unsafe_correct A (dq: s A) Hne x dq' :
-  uncons_unsafe dq Hne = (x, dq') ->
-  s_seq dq = x :: s_seq dq'.
+Lemma uncons_correct A (dq: s A) :
+  option_seq (cons_seq s_seq) (S.uncons dq) = s_seq dq.
 Proof.
-  funelim (uncons_unsafe dq Hne); simp uncons_unsafe.
-  { destruct (buffer_uncons_unsafe buf _) as [? [? ?]] eqn:Huncons.
-    inversion 1; subst. simp s_seq kont_seq.
-    erewrite buffer_uncons_unsafe_correct; [|eassumption].
-    now simp any_buffer_seq. }
-  { destruct (green_uncons p1) as [? [? ? ?]] eqn:Huncons.
-    inversion 1; subst. simp s_seq kont_seq yellow.
+  funelim (S.uncons dq); simp uncons; cbn.
+  { destruct (green_uncons p1) as [? [? ? ?]] eqn:Huncons. cbn.
+    simp s_seq kont_seq yellow.
     destruct (deque_seq (Green p1 child s1)) as [[? ?] ?] eqn:Hdq1.
     simp kont_seq deque_seq.
     destruct (deque_seq child) as [[? ?] ?] eqn:Hdq2.
@@ -566,13 +533,41 @@ Proof.
     rewrite ensure_green_correct.
     simp deque_seq in Hdq1. rewrite Hdq2 in Hdq1.
     simp deque_seq in Hdq1. inversion Hdq1; subst.
-    rewrite -!app_assoc. erewrite green_uncons_correct; [|eassumption].
+    rewrite -!app_assoc. erewrite (green_uncons_correct _ p1); [|eassumption].
     simp yellow_buffer_seq. rewrite app_comm_cons //. }
   { destruct (yellow_uncons (Yellowish p1)) as [? [? ?]] eqn:Huncons.
-    inversion 1; subst. simp s_seq kont_seq deque_seq.
-    destruct (deque_seq child) as [[? ?] ?] eqn:Hdq1. simp s_seq kont_seq deque_seq red.
+    simp s_seq kont_seq deque_seq.
+    destruct (deque_seq child) as [[? ?] ?] eqn:Hdq1. cbn.
+    simp s_seq kont_seq deque_seq red.
     rewrite green_of_red_correct. simp kont_seq deque_seq. rewrite Hdq1.
     simp kont_seq deque_seq. eapply yellow_uncons_correct in Huncons.
     simp yellow_buffer_seq in Huncons. rewrite Huncons.
     rewrite -!app_assoc -app_comm_cons. now simp any_buffer_seq. }
+  { simp s_seq kont_seq deque_seq. rewrite Heq/=. simp s_seq kont_seq.
+    rewrite -(buffer_uncons_correct _ _ buf) Heq /=. now simp any_buffer_seq. }
+  { simp s_seq kont_seq deque_seq. rewrite Heq/=.
+    epose proof (buffer_uncons_correct _ _ buf) as HH. rewrite Heq //= in HH. }
 Qed.
+
+Lemma unsnoc_correct A (dq: s A) :
+  option_seq (snoc_seq s_seq) (S.unsnoc dq) = s_seq dq.
+Proof.
+  funelim (S.unsnoc dq); simp unsnoc.
+  { destruct (green_unsnoc s1) as [[? ? ?] ?] eqn:Hunsnoc. cbn.
+    simp s_seq kont_seq deque_seq yellow.
+    destruct (deque_seq child) as [[? ?] ?]. cbn. simp kont_seq deque_seq.
+    rewrite ensure_green_correct. rewrite -!app_assoc.
+    erewrite (green_unsnoc_correct _ s1); [| eassumption]. done. }
+  { destruct (yellow_unsnoc (Yellowish s1)) as [[? ?] ?] eqn:Hunsnoc. cbn.
+    simp s_seq kont_seq deque_seq red.
+    rewrite green_of_red_correct. simp kont_seq deque_seq.
+    destruct (deque_seq child) as [[? ?] ?]. simp kont_seq deque_seq.
+    eapply yellow_unsnoc_correct in Hunsnoc. simp yellow_buffer_seq in Hunsnoc.
+    rewrite Hunsnoc. rewrite -!app_assoc //. }
+  { simp s_seq kont_seq deque_seq. rewrite Heq/=. simp s_seq kont_seq.
+    rewrite -(buffer_unsnoc_correct _ _ buf) Heq /=. now simp any_buffer_seq. }
+  { simp s_seq kont_seq deque_seq. rewrite Heq/=.
+    epose proof (buffer_unsnoc_correct _ _ buf) as HH. rewrite Heq //= in HH. }
+Qed.
+
+End S.
