@@ -1,4 +1,5 @@
 (lang dune 2.8)
+(using coq 0.3)
 (generate_opam_files true)
 
 (name deque)
