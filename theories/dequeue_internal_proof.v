@@ -1,4 +1,4 @@
-From Coq Require Import Program List ssreflect.
+From Coq Require Import Program List ZArith ssreflect Lia.
 Import ListNotations.
 From Equations Require Import Equations.
 From deque Require Import dequeue_internal.
@@ -571,3 +571,72 @@ Proof.
 Qed.
 
 End S.
+
+Ltac case_if Hcond :=
+  match goal with |- context [ if ?cond then _ else _ ] =>
+    destruct cond eqn:Hcond
+  end.
+
+Tactic Notation "case_if" intropattern(Hcond) := case_if Hcond.
+
+Definition t_is_seq {A} (dq: t A) (l: list A) : Prop :=
+  if tlength dq >=? 0 then
+    l = s_seq (tseq dq) /\
+    List.length l = Z.to_nat (tlength dq)
+  else
+    l = List.rev (s_seq (tseq dq)) /\
+    List.length l = Z.to_nat (- (tlength dq)).
+
+Lemma empty_correct {A} : t_is_seq (@empty A) [].
+Proof. done. Qed.
+
+Lemma is_empty_correct {A} (dq: t A) l :
+  t_is_seq dq l ->
+  is_empty dq = true <-> l = [].
+Proof.
+  destruct dq as [x s]. rewrite /is_empty /t_is_seq /=.
+  case_if Hcond; cbn.
+  { intros [-> HH]. rewrite Z.eqb_eq.
+    split; [intros -> | intros HHH; rewrite HHH in HH].
+    by rewrite length_zero_iff_nil in HH. by cbn in *; lia. }
+  { intros [-> HH]. rewrite Z.eqb_eq.
+    split; [ intros -> | intros HHH; rewrite HHH in HH].
+    by rewrite rev_length// in HH. by cbn in *; lia. }
+Qed.
+
+Lemma length_correct {A} (dq: t A) l :
+  t_is_seq dq l ->
+  length dq = Z.of_nat (List.length l).
+Proof.
+  destruct dq as [x s]. rewrite /length /t_is_seq /=.
+  case_if Hcond; cbn; lia.
+Qed.
+
+Lemma rev_correct {A} (dq: t A) l :
+  t_is_seq dq l ->
+  t_is_seq (rev dq) (List.rev l).
+Proof.
+  destruct dq as [x s]. rewrite /rev /t_is_seq /=.
+  destruct (Z_zerop x) as [->|?].
+  { case_if ?; [|lia]. case_if ?; [|lia].
+    by intros [-> ->%length_zero_iff_nil]. }
+  case_if Hcond; cbn.
+  { intros [-> HH]. case_if Hcond'; [lia|].
+    rewrite Z.opp_involutive rev_length //. }
+  { intros [-> HH]. case_if ?; [|lia]. rewrite rev_involutive.
+    rewrite rev_length // in HH. }
+Qed.
+
+Lemma cons_correct {A} (x:A) dq l :
+  t_is_seq dq l ->
+  t_is_seq (cons x dq) (x :: l).
+Proof.
+  destruct dq as [n s]. rewrite /t_is_seq /cons /=.
+  case_if Hcond.
+  { intros [-> Hlen]; cbn.
+    case_if ?; [|lia]. rewrite S.cons_correct. rewrite Hlen.
+    split; auto. lia. }
+  { intros [-> Hlen]; cbn. case_if ?; [lia|].
+    rewrite rev_length in Hlen |- *.
+    rewrite S.snoc_correct rev_app_distr /=. split; auto. lia. }
+Qed.

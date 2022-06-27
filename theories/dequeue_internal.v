@@ -1,6 +1,7 @@
-From Coq Require Import Program List.
+From Coq Require Import Program List ZArith.
 Import ListNotations.
 From Equations Require Import Equations.
+Open Scope Z_scope.
 
 #[local] Obligation Tactic := try constructor.
 
@@ -410,3 +411,62 @@ unsnoc (T (Y (Yellow p1 child s1) k)) :=
   Some (red p1 child s1 k, x).
 
 End S.
+
+Record t (A: Type) := { tlength : Z; tseq : s A }.
+Arguments tlength {A}.
+Arguments tseq {A}.
+
+Definition empty {A} : t A :=
+  {| tlength := 0; tseq := T (Small B0) |}.
+
+Definition is_empty {A} (dq: t A): bool :=
+  tlength dq =? 0.
+
+Definition length {A} (dq: t A) : Z :=
+  Z.abs (tlength dq).
+
+Definition rev {A} (dq: t A) : t A :=
+  {| tlength := - (tlength dq); tseq := tseq dq |}.
+
+Definition cons {A} (x: A) (dq: t A) : t A :=
+  let '{| tlength := n; tseq := s |} := dq in
+  if n >=? 0 then
+    {| tlength := n + 1; tseq := S.cons x s |}
+  else
+    {| tlength := n - 1; tseq := S.snoc s x |}.
+
+Definition snoc {A} (dq: t A) (x: A) : t A :=
+  let '{| tlength := n; tseq := s |} := dq in
+  if n >=? 0 then
+    {| tlength := n + 1; tseq := S.snoc s x |}
+  else
+    {| tlength := n - 1; tseq := S.cons x s |}.
+
+Definition uncons {A} (dq: t A) : option (A * t A) :=
+  let '{| tlength := n; tseq := s |} := dq in
+  if n >=? 0 then
+    match S.uncons s with
+    | None => None
+    | Some (x, s) => Some (x, {| tlength := n-1; tseq := s |})
+    end
+  else
+    match S.unsnoc s with
+    | None => None
+    | Some (s, x) => Some (x, {| tlength := n+1; tseq := s |})
+    end.
+
+Definition unsnoc {A} (dq: t A) : option (t A * A) :=
+  let '{| tlength := n; tseq := s |} := dq in
+  if n >=? 0 then
+    match S.unsnoc s with
+    | None => None
+    | Some (s, x) => Some ({| tlength := n-1; tseq := s |}, x)
+    end
+  else
+    match S.uncons s with
+    | None => None
+    | Some (x, s) => Some ({| tlength := n+1; tseq := s |}, x)
+    end.
+
+Definition is_rev {A} (dq: t A) : bool :=
+  tlength dq <? 0.
