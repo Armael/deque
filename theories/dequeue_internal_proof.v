@@ -24,6 +24,12 @@ Fixpoint flattenp {A} (l: list (A * A)): list A :=
 Lemma flattenp_app A (l1: list (A * A)) l2 : flattenp (l1 ++ l2) = flattenp l1 ++ flattenp l2.
 Proof. revert l2; induction l1; hauto. Qed.
 
+#[export] Hint Rewrite <-app_assoc : rlist.
+#[export] Hint Rewrite <-app_comm_cons : rlist.
+#[export] Hint Rewrite flattenp_app : rlist.
+#[export] Hint Rewrite app_nil_r : rlist.
+#[export] Hint Rewrite compose_id_right : rlist.
+
 Equations buffer_seq {A C} : buffer A C -> list A :=
 buffer_seq B0 := [];
 buffer_seq (B1 a) := [a];
@@ -142,20 +148,34 @@ Proof. funelim (yellow_unsnoc buf); fcrush. Qed.
 (*   funelim (yellow_unsnoc buf); unfold snoc_seq; now simp yellow_unsnoc yellow_buffer_seq buffer_seq. *)
 (* Qed. *)
 
-Lemma buffer_uncons_correct A C (buf:buffer A C) :
-  option_seq (cons_seq any_buffer_seq) (buffer_uncons buf) = buffer_seq buf.
+Lemma buffer_uncons_Some_correct A C (buf:buffer A C) x buf':
+  buffer_uncons buf = Some (x, buf') ->
+  buffer_seq buf = x :: any_buffer_seq buf'.
 Proof. funelim (buffer_uncons buf); fcrush. Qed.
 
-Lemma buffer_unsnoc_correct A C (buf:buffer A C) :
-  option_seq (snoc_seq any_buffer_seq) (buffer_unsnoc buf) = buffer_seq buf.
+Lemma buffer_uncons_None_correct A C (buf:buffer A C):
+  buffer_uncons buf = None ->
+  buffer_seq buf = [].
+Proof. funelim (buffer_uncons buf); fcrush. Qed.
+
+Lemma buffer_unsnoc_Some_correct A C (buf:buffer A C) x buf':
+  buffer_unsnoc buf = Some (buf', x) ->
+  buffer_seq buf = any_buffer_seq buf' ++ [x].
 Proof. funelim (buffer_unsnoc buf); fcrush. Qed.
 
-Lemma prefix_rot_correct A C x (buf:buffer A C) :
-  snoc_seq buffer_seq (prefix_rot x buf) = x :: buffer_seq buf.
+Lemma buffer_unsnoc_None_correct A C (buf:buffer A C) :
+  buffer_unsnoc buf = None ->
+  buffer_seq buf = [].
+Proof. funelim (buffer_unsnoc buf); fcrush. Qed.
+
+Lemma prefix_rot_correct A C x (buf:buffer A C) buf' y :
+  prefix_rot x buf = (buf', y) ->
+  x :: buffer_seq buf = buffer_seq buf' ++ [y].
 Proof. funelim (prefix_rot x buf); fcrush. Qed.
 
-Lemma suffix_rot_correct A C x (buf:buffer A C) :
-  cons_seq buffer_seq (suffix_rot buf x) = buffer_seq buf ++ [x].
+Lemma suffix_rot_correct A C x (buf:buffer A C) buf' y :
+  suffix_rot buf x = (y, buf') ->
+  buffer_seq buf ++ [x] = y :: buffer_seq buf'.
 Proof. funelim (suffix_rot buf x); fcrush. Qed.
 
 Lemma prefix_decompose_underflow_correct A C (buf:buffer A C) opt:
@@ -205,9 +225,9 @@ Lemma green_prefix_concat_correct A C (buf1:buffer A C) buf2 buf1' buf2' :
   buffer_seq buf1 ++ flattenp (buffer_seq buf2) = buffer_seq buf1' ++ flattenp (yellow_buffer_seq buf2').
 Proof.
   funelim (green_prefix_concat buf1 buf2); rewrite <- Heqcall.
-  { hauto use:prefix_decompose_underflow_correct,prefix23_correct,app_assoc,green_uncons_correct db:green_prefix_concat. }
+  { hauto use:prefix_decompose_underflow_correct,prefix23_correct,green_uncons_correct db:green_prefix_concat,rlist. }
   { hauto use:prefix_decompose_ok_correct. }
-  { hauto use:prefix_decompose_overflow_correct,green_prefix_cons_correct,app_assoc db:yellow_buffer_seq. }
+  { hauto use:prefix_decompose_overflow_correct,green_prefix_cons_correct db:yellow_buffer_seq,rlist. }
 Qed.
 
 Lemma green_suffix_concat_correct A C buf1 (buf2: buffer A C) buf1' buf2' :
@@ -215,9 +235,9 @@ Lemma green_suffix_concat_correct A C buf1 (buf2: buffer A C) buf1' buf2' :
   flattenp (buffer_seq buf1) ++ buffer_seq buf2 = flattenp (yellow_buffer_seq buf1') ++ buffer_seq buf2'.
 Proof.
   funelim (green_suffix_concat buf1 buf2); rewrite <- Heqcall.
-  { hauto use:green_unsnoc_correct,suffix_decompose_underflow_correct,flattenp_app,app_assoc,suffix23_correct. }
+  { hauto use:green_unsnoc_correct,suffix_decompose_underflow_correct,suffix23_correct db:rlist. }
   { hauto use:suffix_decompose_ok_correct. }
-  { hauto use:green_suffix_snoc_correct,flattenp_app,app_assoc,suffix_decompose_overflow_correct db:yellow_buffer_seq. }
+  { hauto use:green_suffix_snoc_correct,suffix_decompose_overflow_correct db:yellow_buffer_seq,rlist. }
 Qed.
 
 Lemma prefix_concat_correct A B (buf1: buffer A B) buf2 buf1' buf2' :
@@ -226,9 +246,9 @@ Lemma prefix_concat_correct A B (buf1: buffer A B) buf2 buf1' buf2' :
   buffer_seq buf1' ++ flattenp (any_buffer_seq buf2').
 Proof.
   funelim (prefix_concat buf1 buf2); rewrite <- Heqcall.
-  { hauto use:yellow_uncons_correct,prefix23_correct,prefix_decompose_underflow_correct,app_assoc. }
+  { hauto use:yellow_uncons_correct,prefix23_correct,prefix_decompose_underflow_correct db:rlist. }
   { hauto use:prefix_decompose_ok_correct. }
-  { hauto use:prefix_decompose_overflow_correct,yellow_prefix_cons_correct,app_assoc. }
+  { hauto use:prefix_decompose_overflow_correct,yellow_prefix_cons_correct db:rlist. }
 Qed.
 
 Lemma suffix_concat_correct A B buf1 (buf2: buffer A B) buf1' buf2' :
@@ -237,9 +257,9 @@ Lemma suffix_concat_correct A B buf1 (buf2: buffer A B) buf1' buf2' :
   flattenp (any_buffer_seq buf1') ++ buffer_seq buf2'.
 Proof.
   funelim (suffix_concat buf1 buf2); rewrite <- Heqcall.
-  { hauto use:yellow_unsnoc_correct,suffix_decompose_underflow_correct,suffix23_correct,flattenp_app,app_assoc. }
+  { hauto use:yellow_unsnoc_correct,suffix_decompose_underflow_correct,suffix23_correct db:rlist. }
   { hauto use:suffix_decompose_ok_correct. }
-  { hauto use:suffix_decompose_overflow_correct,yellow_suffix_snoc_correct,app_assoc,flattenp_app. }
+  { hauto use:suffix_decompose_overflow_correct,yellow_suffix_snoc_correct db:rlist. }
 Qed.
 
 Lemma buffer_unsandwich_alone_correct A C (buf:buffer A C) opt :
@@ -266,6 +286,10 @@ Lemma kont_of_opt3_correct A (opt1: option A) opt2 opt3 :
   option_seq (fun x => [x]) opt3.
 Proof. funelim (kont_of_opt3 opt1 opt2 opt3); sfirstorder. Qed.
 
+Lemma flattenp_congr A (l l': list (A * A)) :
+  l = l' ->
+  flattenp l = flattenp l'.
+Proof. fcrush. Qed.
 
 Lemma make_small_correct A C1 C2 C3 (buf1: buffer A C1) (buf2: buffer (A * A) C2) (buf3: buffer A C3) :
   kont_seq (make_small buf1 buf2 buf3) =
@@ -275,95 +299,64 @@ Lemma make_small_correct A C1 C2 C3 (buf1: buffer A C1) (buf2: buffer (A * A) C2
 Proof.
   funelim (make_small buf1 buf2 buf3); rewrite <- Heqcall.
   { destruct (suffix_rot buf ab) as [[c d] center] eqn:Hsuffix.
+    apply suffix_rot_correct, flattenp_congr in Hsuffix.
     erewrite prefix_decompose_underflow_correct; [|eassumption].
     erewrite (suffix_decompose_overflow_correct _ _ suffix1); [|eassumption].
     simp kont_seq deque_seq.
-    rewrite prefix23_correct -!app_assoc//=.
-    rewrite compose_id_right.
-    assert (flattenp ((c, d) :: buffer_seq center) = flattenp (buffer_seq buf ++ [ab])) as HH.
-    { epose proof (suffix_rot_correct _ _ ab buf) as HH.
-      rewrite /cons_seq Hsuffix // in HH. rewrite HH//. }
-    cbn in HH. f_equal.
-    rewrite !app_comm_cons HH flattenp_app -app_assoc //. }
-  { hauto use: prefix_decompose_ok_correct, suffix_decompose_ok_correct, compose_id_right, app_nil_r
-          db: make_small, kont_seq, deque_seq. }
-  { hauto use: prefix_decompose_ok_correct, suffix_decompose_overflow_correct, buffer_snoc_correct,
-               flattenp_app, app_assoc, compose_id_right, app_nil_r
-          db: make_small, kont_seq, deque_seq. }
+    rewrite prefix23_correct -!app_assoc//= compose_id_right. f_equal.
+    destruct ab. cbn in *. rewrite 2!app_comm_cons -Hsuffix. hauto db:rlist. }
+  { hauto use: prefix_decompose_ok_correct, suffix_decompose_ok_correct
+          db: make_small, kont_seq, deque_seq, rlist. }
+  { hauto use: prefix_decompose_ok_correct, suffix_decompose_overflow_correct, buffer_snoc_correct
+          db: make_small, kont_seq, deque_seq, rlist. }
   { destruct (prefix_rot ab buf) as [center [c d]] eqn:Hprefix.
+    apply prefix_rot_correct, flattenp_congr in Hprefix.
     simp kont_seq deque_seq.
     rewrite compose_id_right //= app_nil_r.
     erewrite (prefix_decompose_overflow_correct _ _ prefix1); [|eassumption].
     erewrite (suffix_decompose_underflow_correct _ _ suffix1); [|eassumption].
     rewrite suffix23_correct -!app_assoc. f_equal.
-    destruct ab as [a b]. cbn.
-    epose proof (prefix_rot_correct _ _ (a, b) buf) as HH.
-    rewrite /snoc_seq Hprefix in HH. rewrite !app_comm_cons.
-    rewrite -/(flattenp ((a,b) :: buffer_seq buf)) -HH flattenp_app -app_assoc //. }
-  { hauto use:prefix_decompose_overflow_correct,suffix_decompose_ok_correct,buffer_cons_correct,app_assoc
-          db:make_small,kont_seq,deque_seq. }
+    destruct ab as [a b]. cbn in *. rewrite 2!app_comm_cons Hprefix. hauto db:rlist. }
+  { hauto use:prefix_decompose_overflow_correct,suffix_decompose_ok_correct,buffer_cons_correct
+          db:make_small,kont_seq,deque_seq,rlist. }
   { hauto use:prefix_decompose_overflow_correct,suffix_decompose_overflow_correct,
-                compose_id_right,app_nil_r,
-                buffer_halve_correct,prefix12_correct,flattenp_app,app_assoc
-          db:kont_seq,deque_seq,make_small q:on. }
+                buffer_halve_correct,prefix12_correct
+          db:kont_seq,deque_seq,make_small,rlist q:on. }
   { hauto use:prefix_decompose_underflow_correct,suffix_decompose_underflow_correct,
-              buffer_unsandwich_alone_correct, kont_of_opt3_correct,
-              flattenp_app,app_assoc
-          db:kont_seq,deque_seq,make_small. }
+              buffer_unsandwich_alone_correct, kont_of_opt3_correct
+          db:kont_seq,deque_seq,make_small,rlist. }
   { hauto use:prefix_decompose_underflow_correct,suffix_decompose_underflow_correct,
               buffer_unsandwich_sandwich_correct, kont_of_opt3_correct,
-              compose_id_right,app_nil_r,suffix23_correct,prefix23_correct,
-              buffer_halve_correct,flattenp_app,app_assoc,app_comm_cons
-          db:kont_seq,deque_seq,make_small. }
-  { simp kont_seq deque_seq.
-    rewrite compose_id_right //= app_nil_r.
-    erewrite (prefix_decompose_underflow_correct _ _ prefix1); [|eassumption].
-    erewrite (suffix_decompose_ok_correct _ _ suffix1); [|eassumption].
-    rewrite prefix23_correct -!app_assoc //.
-    epose proof (buffer_uncons_correct _ _ buf) as HH.
-    rewrite Heq /option_seq /cons_seq in HH. destruct cd as [c d]. cbn.
-    rewrite -HH //. }
-  { erewrite (prefix_decompose_underflow_correct _ _ prefix1); [|eassumption].
-    erewrite (suffix_decompose_ok_correct _ _ suffix1); [|eassumption].
-    rewrite buffer_cons_correct /=.
-    epose proof (buffer_uncons_correct _ _ buf) as HH.
-    rewrite Heq /= in HH. rewrite -HH //. }
-  { simp kont_seq deque_seq.
-    erewrite (prefix_decompose_underflow_correct _ _ prefix1); [|eassumption].
-    erewrite (suffix_decompose_ok_correct _ _ suffix1); [|eassumption].
-    rewrite compose_id_right //= app_nil_r prefix23_correct -!app_assoc.
-    destruct cd as [c d]. cbn.
-    epose proof (buffer_uncons_correct _ _ buf) as HH. rewrite Heq in HH.
-    cbn in HH. rewrite -HH //. }
-  { simp kont_seq deque_seq.
-    erewrite (prefix_decompose_underflow_correct _ _ prefix1); [|eassumption].
-    erewrite (suffix_decompose_ok_correct _ _ suffix1); [|eassumption].
-    epose proof (buffer_uncons_correct _ _ buf) as HH.
-    rewrite Heq /= in HH. rewrite -HH //. }
-  { simp kont_seq deque_seq.
-    erewrite (prefix_decompose_ok_correct _ _ prefix1); [|eassumption].
-    erewrite (suffix_decompose_underflow_correct _ _ suffix1); [|eassumption].
-    epose proof (buffer_unsnoc_correct _ _ buf) as HH.
-    rewrite Heq /= in HH. rewrite -HH //.
-    rewrite compose_id_right //= app_nil_r !flattenp_app suffix23_correct -!app_assoc//. }
-  { simp kont_seq deque_seq.
-    erewrite (prefix_decompose_ok_correct _ _ prefix1); [|eassumption].
-    erewrite (suffix_decompose_underflow_correct _ _ suffix1); [|eassumption].
-    epose proof (buffer_unsnoc_correct _ _ buf) as HH.
-    rewrite Heq /= in HH. rewrite -HH //= buffer_snoc_correct //. }
-  { simp kont_seq deque_seq.
-    erewrite (prefix_decompose_ok_correct _ _ prefix1); [|eassumption].
-    erewrite (suffix_decompose_underflow_correct _ _ suffix1); [|eassumption].
-    epose proof (buffer_unsnoc_correct _ _ buf) as HH.
-    rewrite Heq /= in HH. rewrite -HH //= app_nil_r //. }
+              suffix23_correct,prefix23_correct,buffer_halve_correct
+          db:kont_seq,deque_seq,make_small,rlist. }
+  { hauto use:suffix_decompose_ok_correct,prefix_decompose_underflow_correct,
+              buffer_uncons_Some_correct,prefix23_correct
+           db:kont_seq,deque_seq,make_small,rlist. }
+  { hauto use:prefix_decompose_underflow_correct,suffix_decompose_ok_correct,
+              buffer_uncons_None_correct,buffer_cons_correct
+           db:kont_seq,deque_seq,make_small,rlist lq:on. }
+  { hauto use:prefix_decompose_underflow_correct,suffix_decompose_ok_correct,
+              buffer_uncons_Some_correct,prefix23_correct
+           db:kont_seq,deque_seq,make_small,rlist lq:on. }
+  { hauto use:prefix_decompose_underflow_correct,suffix_decompose_ok_correct,
+              buffer_uncons_None_correct
+           db:kont_seq,deque_seq,make_small,rlist lq:on. }
+  { hauto use:prefix_decompose_ok_correct,suffix_decompose_underflow_correct,
+              buffer_unsnoc_Some_correct,suffix23_correct
+           db:kont_seq,deque_seq,make_small,rlist lq:on. }
+  { hauto use:prefix_decompose_ok_correct,suffix_decompose_underflow_correct,
+              buffer_unsnoc_None_correct,buffer_snoc_correct
+           db:kont_seq,deque_seq,make_small,rlist lq:on. }
+  { hauto use:prefix_decompose_ok_correct,suffix_decompose_underflow_correct,
+              buffer_unsnoc_None_correct
+           db:kont_seq,deque_seq,make_small,rlist lq:on. }
 Qed.
 
 Lemma green_of_red_correct A (k: kont A is_red) :
   kont_seq (green_of_red k) = kont_seq k.
 Proof.
   funelim (green_of_red k); simp green_of_red.
-  { simp kont_seq deque_seq.
-    rewrite make_small_correct //= app_nil_r compose_id_right //. }
+  { hauto use:make_small_correct db:kont_seq,deque_seq,rlist. }
   { destruct (green_prefix_concat p1 p2) as [p1' [? ? p2']] eqn:Hprefix.
     destruct (green_suffix_concat s2 s1) as [[? ? s2'] s1'] eqn:Hsuffix.
     simp kont_seq deque_seq.
@@ -373,7 +366,8 @@ Proof.
     rewrite !flattenp_app -!app_assoc.
     rewrite (app_assoc (buffer_seq p1)).
     erewrite (green_prefix_concat_correct _ _ p1 p2);[|eassumption].
-    hauto use:green_prefix_concat_correct,green_suffix_concat_correct,flattenp_app,app_assoc db:yellow_buffer_seq.
+    hauto use:green_prefix_concat_correct,green_suffix_concat_correct,flattenp_app,app_assoc
+           db:yellow_buffer_seq.
   }
   { destruct (prefix_concat p1 (Yellowish p2)) as [p1' [? p2']] eqn:Hprefix.
     destruct (suffix_concat (Yellowish s2) s1) as [[? s2'] s1'] eqn:Hsuffix.
@@ -385,15 +379,14 @@ Proof.
     rewrite (app_assoc (buffer_seq p1)).
     apply (prefix_concat_correct _ _ p1 (Yellowish p2)) in Hprefix.
     simp yellow_buffer_seq in Hprefix. rewrite Hprefix.
-    hauto use:prefix_concat_correct,suffix_concat_correct,app_assoc db:yellow_buffer_seq,any_buffer_seq.
+    hauto use:prefix_concat_correct,suffix_concat_correct,app_assoc
+           db:yellow_buffer_seq,any_buffer_seq.
   }
 Qed.
 
 Lemma ensure_green_correct A C (ny: not_yellow C) (k: kont A C) :
   kont_seq (ensure_green ny k) = kont_seq k.
-Proof.
-  funelim (ensure_green ny k); hauto use:green_of_red_correct.
-Qed.
+Proof. funelim (ensure_green ny k); hauto use:green_of_red_correct. Qed.
 
 Module S.
 
@@ -401,24 +394,23 @@ Lemma cons_correct A (x:A) s :
   s_seq (S.cons x s) = x :: s_seq s.
 Proof.
   funelim (S.cons x s); simp cons s_seq yellow red kont_seq deque_seq.
-  { rewrite buffer_cons_correct //. }
+  { hauto use:buffer_cons_correct. }
   { destruct (deque_seq child) as [[? ?] ?]. simp kont_seq deque_seq.
-    rewrite green_prefix_cons_correct. rewrite -!app_assoc -app_comm_cons.
-    now rewrite ensure_green_correct. }
+    hauto use:green_prefix_cons_correct,ensure_green_correct db:rlist. }
   { destruct (yellow_prefix_cons x (Yellowish p1)) as [? ?] eqn:Hprefix.
     epose proof (yellow_prefix_cons_correct _ x (Yellowish p1)) as HH. rewrite Hprefix in HH.
     simp s_seq red kont_seq. rewrite green_of_red_correct. simp kont_seq deque_seq.
     destruct (deque_seq child) as [[? ?] ?].
-    hauto use:app_assoc db:any_buffer_seq,kont_seq,deque_seq. }
+    hauto db:any_buffer_seq,kont_seq,deque_seq,rlist. }
 Qed.
 
 Lemma snoc_correct A s (x:A) :
   s_seq (S.snoc s x) = s_seq s ++ [x].
 Proof.
   funelim (S.snoc s x); simp snoc s_seq yellow red kont_seq deque_seq.
-  { rewrite buffer_snoc_correct //. }
+  { hauto use:buffer_snoc_correct. }
   { destruct (deque_seq child) as [[? ?] ?]. simp kont_seq deque_seq.
-    rewrite green_suffix_snoc_correct ensure_green_correct -!app_assoc //. }
+    hauto use:green_suffix_snoc_correct,ensure_green_correct db:rlist. }
   { destruct (yellow_suffix_snoc (Yellowish s1) x) as [? ?] eqn:Hsuffix.
     simp s_seq red kont_seq. rewrite green_of_red_correct. simp kont_seq deque_seq.
     destruct (deque_seq child) as [[? ?] ?]. simp kont_seq deque_seq.
@@ -435,12 +427,10 @@ Proof.
     destruct (deque_seq (Green p1 child s1)) as [[? ?] ?] eqn:Hdq1.
     simp kont_seq deque_seq.
     destruct (deque_seq child) as [[? ?] ?] eqn:Hdq2.
-    simp kont_seq deque_seq.
-    rewrite ensure_green_correct.
     simp deque_seq in Hdq1. rewrite Hdq2 in Hdq1.
-    simp deque_seq in Hdq1. inversion Hdq1; subst.
-    rewrite -!app_assoc. erewrite (green_uncons_correct _ p1); [|eassumption].
-    simp yellow_buffer_seq. rewrite app_comm_cons //. }
+    simp deque_seq in Hdq1.
+    hauto use:ensure_green_correct,green_uncons_correct
+           db:kont_seq,deque_seq,yellow_buffer_seq,rlist. }
   { destruct (yellow_uncons (Yellowish p1)) as [? [? ?]] eqn:Huncons.
     simp s_seq kont_seq deque_seq.
     destruct (deque_seq child) as [[? ?] ?] eqn:Hdq1. cbn.
