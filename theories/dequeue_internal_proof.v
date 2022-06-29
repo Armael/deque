@@ -439,10 +439,8 @@ Proof.
     simp kont_seq deque_seq. eapply yellow_uncons_correct in Huncons.
     simp yellow_buffer_seq in Huncons. rewrite Huncons.
     rewrite -!app_assoc -app_comm_cons. now simp any_buffer_seq. }
-  { simp s_seq kont_seq deque_seq. rewrite Heq/=. simp s_seq kont_seq.
-    rewrite -(buffer_uncons_correct _ _ buf) Heq /=. now simp any_buffer_seq. }
-  { simp s_seq kont_seq deque_seq. rewrite Heq/=.
-    epose proof (buffer_uncons_correct _ _ buf) as HH. rewrite Heq //= in HH. }
+  { hauto use:buffer_uncons_Some_correct. }
+  { hauto use:buffer_uncons_None_correct. }
 Qed.
 
 Lemma unsnoc_correct A (dq: s A) :
@@ -460,10 +458,8 @@ Proof.
     destruct (deque_seq child) as [[? ?] ?]. simp kont_seq deque_seq.
     eapply yellow_unsnoc_correct in Hunsnoc. simp yellow_buffer_seq in Hunsnoc.
     rewrite Hunsnoc. rewrite -!app_assoc //. }
-  { simp s_seq kont_seq deque_seq. rewrite Heq/=. simp s_seq kont_seq.
-    rewrite -(buffer_unsnoc_correct _ _ buf) Heq /=. now simp any_buffer_seq. }
-  { simp s_seq kont_seq deque_seq. rewrite Heq/=.
-    epose proof (buffer_unsnoc_correct _ _ buf) as HH. rewrite Heq //= in HH. }
+  { hauto use:buffer_unsnoc_Some_correct. }
+  { hauto use:buffer_unsnoc_None_correct. }
 Qed.
 
 End S.
