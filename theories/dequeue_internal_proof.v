@@ -443,6 +443,14 @@ Proof.
   { hauto use:buffer_uncons_None_correct. }
 Qed.
 
+Lemma uncons_Some_correct A (dq: s A) x dq':
+  S.uncons dq = Some (x, dq') -> s_seq dq = x :: s_seq dq'.
+Proof. rewrite -uncons_correct. by intros ->. Qed.
+
+Lemma uncons_None_correct A (dq: s A) :
+  S.uncons dq = None -> s_seq dq = [].
+Proof. rewrite -uncons_correct. by intros ->. Qed.
+
 Lemma unsnoc_correct A (dq: s A) :
   option_seq (snoc_seq s_seq) (S.unsnoc dq) = s_seq dq.
 Proof.
@@ -461,6 +469,15 @@ Proof.
   { hauto use:buffer_unsnoc_Some_correct. }
   { hauto use:buffer_unsnoc_None_correct. }
 Qed.
+
+Lemma unsnoc_Some_correct A (dq: s A) x dq':
+  S.unsnoc dq = Some (dq', x) ->
+  s_seq dq = s_seq dq' ++ [x].
+Proof. rewrite -unsnoc_correct. by intros ->. Qed.
+
+Lemma unsnoc_None_correct A (dq: s A) :
+  S.unsnoc dq = None -> s_seq dq = [].
+Proof. rewrite -unsnoc_correct. by intros ->. Qed.
 
 End S.
 
@@ -531,4 +548,45 @@ Proof.
   { intros [-> Hlen]; cbn. case_if ?; [lia|].
     rewrite rev_length in Hlen |- *.
     rewrite S.snoc_correct rev_app_distr /=. split; auto. lia. }
+Qed.
+
+Lemma uncons_Some_correct {A} dq l (x:A) dq' :
+  t_is_seq dq l ->
+  uncons dq = Some (x, dq') ->
+  exists l', l = x :: l' /\ t_is_seq dq' l'.
+Proof.
+  destruct dq as [n s]. rewrite /t_is_seq /uncons /=.
+  destruct (Z_zerop n) as [->|?].
+  { case_if Hcond; [| lia]. intros [?%eq_sym ->%length_zero_iff_nil].
+    destruct (S.uncons s) as [[? ?]|] eqn:Huncons; [|congruence].
+    apply S.uncons_Some_correct in Huncons. congruence. }
+  case_if Hcond.
+  { intros [-> Hlen]. destruct (S.uncons s) eqn:Huncons; [|congruence].
+    destruct p. apply S.uncons_Some_correct in Huncons. inversion 1; subst.
+    eexists. split; [by eauto|]. cbn. case_if ?; try lia; []. split; auto.
+    rewrite Huncons in Hlen. cbn in *; lia. }
+  { intros [-> Hlen]. destruct (S.unsnoc s) eqn:Hunsnoc; [|congruence].
+    destruct p. apply S.unsnoc_Some_correct in Hunsnoc. inversion 1; subst.
+    eexists. rewrite Hunsnoc rev_unit /=. split; [by eauto|].
+    rewrite rev_length in Hlen. case_if ?.
+    (* weird corner case: n = -1 *)
+    { assert (n = -1) as -> by lia. destruct (s_seq s0) eqn:HH; [done | exfalso].
+      rewrite Hunsnoc app_length //= in Hlen. lia. }
+    split; auto. rewrite rev_length. rewrite Hunsnoc app_length /= in Hlen. lia. }
+Qed.
+
+Lemma uncons_None_correct {A} dq (l:list A) :
+  t_is_seq dq l ->
+  uncons dq = None ->
+  l = [].
+Proof.
+  destruct dq as [n s]. rewrite /t_is_seq /uncons /=.
+  destruct (Z_zerop n) as [->|?].
+  { case_if Hcond; [|lia]. destruct (S.uncons s) as [[? ?]|] eqn:Huncons; [congruence|].
+    by intros [-> ?%length_zero_iff_nil] _. }
+  case_if Hcond.
+  { intros [-> Hlen]. destruct (S.uncons s) as [[? ?]|] eqn:Huncons;[congruence|].
+    by apply S.uncons_None_correct in Huncons. }
+  { intros [-> Hlen]. destruct (S.unsnoc s) as [[? ?]|] eqn:Hunsnoc;[congruence|].
+    intros _. apply S.unsnoc_None_correct in Hunsnoc. rewrite Hunsnoc //. }
 Qed.
