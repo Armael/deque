@@ -584,9 +584,43 @@ Proof.
   destruct (Z_zerop n) as [->|?].
   { case_if Hcond; [|lia]. destruct (S.uncons s) as [[? ?]|] eqn:Huncons; [congruence|].
     by intros [-> ?%length_zero_iff_nil] _. }
+  case_if Hcond; hauto use:S.unsnoc_None_correct,S.uncons_None_correct.
+Qed.
+
+Lemma unsnoc_Some_correct {A} dq l (x:A) dq' :
+  t_is_seq dq l ->
+  unsnoc dq = Some (dq', x) ->
+  exists l', l = l' ++ [x] /\ t_is_seq dq' l'.
+Proof.
+  destruct dq as [n s]. rewrite /t_is_seq /unsnoc /=.
+  destruct (Z_zerop n) as [->|?].
+  { case_if Hcond; [| lia]. intros [HH%eq_sym ->%length_zero_iff_nil].
+    destruct (S.unsnoc s) as [[? ?]|] eqn:Hunsnoc; [|congruence].
+    apply S.unsnoc_Some_correct in Hunsnoc. rewrite HH in Hunsnoc.
+    destruct (s_seq s0); cbn in Hunsnoc; congruence. }
   case_if Hcond.
-  { intros [-> Hlen]. destruct (S.uncons s) as [[? ?]|] eqn:Huncons;[congruence|].
-    by apply S.uncons_None_correct in Huncons. }
-  { intros [-> Hlen]. destruct (S.unsnoc s) as [[? ?]|] eqn:Hunsnoc;[congruence|].
-    intros _. apply S.unsnoc_None_correct in Hunsnoc. rewrite Hunsnoc //. }
+  { intros [-> Hlen]. destruct (S.unsnoc s) as [[? ?]|] eqn:Hunsnoc; [|congruence].
+    apply S.unsnoc_Some_correct in Hunsnoc. inversion 1; subst.
+    eexists. split; [by eauto|]. cbn. case_if ?; try lia; []. split; auto.
+    rewrite Hunsnoc in Hlen. rewrite app_length in Hlen. cbn in *; lia. }
+  { intros [-> Hlen]. destruct (S.uncons s) as [[? ?]|] eqn:Huncons; [|congruence].
+    apply S.uncons_Some_correct in Huncons. inversion 1; subst.
+    eexists. rewrite Huncons /=. split; [by eauto|].
+    case_if ?.
+    (* weird corner case: n = -1 *)
+    { assert (n = -1) as -> by lia. destruct (s_seq s0) eqn:HH; [done | exfalso].
+      rewrite Huncons rev_length //= in Hlen. }
+    split; auto. rewrite rev_length. rewrite Huncons rev_length /= in Hlen. lia. }
+Qed.
+
+Lemma unsnoc_None_correct {A} dq (l:list A) :
+  t_is_seq dq l ->
+  unsnoc dq = None ->
+  l = [].
+Proof.
+  destruct dq as [n s]. rewrite /t_is_seq /unsnoc /=.
+  destruct (Z_zerop n) as [->|?].
+  { case_if Hcond; [|lia]. destruct (S.unsnoc s) as [[? ?]|] eqn:Hunsnoc; [congruence|].
+    by intros [-> ?%length_zero_iff_nil] _. }
+  case_if Hcond; hauto use:S.unsnoc_None_correct,S.uncons_None_correct.
 Qed.
