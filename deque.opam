@@ -9,7 +9,7 @@ A double-ended queue is an ordered collection for which elements can be added an
 - `snoc` adds an element at the back
 - `unsnoc` pops the right-most element
 - `append` concatenates two deques
-This datastructure was invented by Kaplan and Tarjan and is described in their paper by the same name."""
+This datastructure was invented by Kaplan and Tarjan."""
 maintainer: ["art.wendling@gmail.com"]
 authors: ["Arthur Wendling"]
 license: "MIT"
