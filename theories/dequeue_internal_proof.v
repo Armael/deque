@@ -550,6 +550,20 @@ Proof.
     rewrite S.snoc_correct rev_app_distr /=. split; auto. lia. }
 Qed.
 
+Lemma snoc_correct {A} (x:A) dq l :
+  t_is_seq dq l ->
+  t_is_seq (snoc dq x) (l ++ [x]).
+Proof.
+  destruct dq as [n s]. rewrite /t_is_seq /snoc /=.
+  case_if Hcond.
+  { intros [-> Hlen]; cbn.
+    case_if ?; [|lia]. rewrite S.snoc_correct. split; auto.
+    rewrite app_length /=. lia. }
+  { intros [-> Hlen]; cbn. case_if ?; [lia|].
+    rewrite rev_length app_length /= in Hlen |- *.
+    rewrite S.cons_correct rev_length /=. split; auto. lia. }
+Qed.
+
 Lemma uncons_Some_correct {A} dq l (x:A) dq' :
   t_is_seq dq l ->
   uncons dq = Some (x, dq') ->
