@@ -221,6 +221,7 @@ Equations green_suffix_snoc {A : Type} (b : buffer A is_green) (x : A) :
 green_suffix_snoc (B2 a b) x := ? B3 a b x;
 green_suffix_snoc (B3 a b c) x := ? B4 a b c x.
 
+#[derive(eliminator=no)]
 Equations yellow_prefix_cons {A : Type} (x : A) (b : yellow_buffer A) :
   { b' : any_buffer A | any_buffer_seq b' = x :: yellow_buffer_seq b } :=
 yellow_prefix_cons x (Yellowish buf) with buf => {
@@ -230,6 +231,7 @@ yellow_prefix_cons x (Yellowish buf) with buf => {
   | B4 a b c d => ? Any (B5 x a b c d)
 }.
 
+#[derive(eliminator=no)]
 Equations yellow_suffix_snoc {A : Type} (b : yellow_buffer A) (x : A) :
   { b' : any_buffer A | any_buffer_seq b' = yellow_buffer_seq b ++ [x] } :=
 yellow_suffix_snoc (Yellowish buf) x with buf := {
@@ -267,6 +269,7 @@ Equations green_unsnoc {A : Type} (b : buffer A is_green) :
 green_unsnoc (B2 a b) => ? ((Yellowish (B1 a)), b);
 green_unsnoc (B3 a b c) => ? ((Yellowish (B2 a b)), c).
 
+#[derive(eliminator=no)]
 Equations yellow_uncons {A : Type} (b : yellow_buffer A) :
   { '(x, b') : A * any_buffer A | yellow_buffer_seq b = x :: any_buffer_seq b' } :=
 yellow_uncons (Yellowish buf) with buf => {
@@ -276,6 +279,7 @@ yellow_uncons (Yellowish buf) with buf => {
   | B4 a b c d => ? (a, Any (B3 b c d))
 }.
 
+#[derive(eliminator=no)]
 Equations yellow_unsnoc {A : Type} (b : yellow_buffer A) :
   { '(b', x) : any_buffer A * A | yellow_buffer_seq b = any_buffer_seq b' ++ [x] } :=
 yellow_unsnoc (Yellowish buf) with buf => {
