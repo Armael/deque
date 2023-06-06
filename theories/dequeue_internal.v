@@ -224,19 +224,19 @@ green_suffix_snoc (B3 a b c) x := ? B4 a b c x.
 Equations yellow_prefix_cons {A : Type} (x : A) (b : yellow_buffer A) :
   { b' : any_buffer A | any_buffer_seq b' = x :: yellow_buffer_seq b } :=
 yellow_prefix_cons x (Yellowish buf) with buf => {
-  yellow_prefix_cons x _ (B1 a) := ? Any (B2 x a);
-  yellow_prefix_cons x _ (B2 a b) := ? Any (B3 x a b);
-  yellow_prefix_cons x _ (B3 a b c) := ? Any (B4 x a b c);
-  yellow_prefix_cons x _ (B4 a b c d) := ? Any (B5 x a b c d)
+  | B1 a => ? Any (B2 x a);
+  | B2 a b => ? Any (B3 x a b);
+  | B3 a b c => ? Any (B4 x a b c);
+  | B4 a b c d => ? Any (B5 x a b c d)
 }.
 
 Equations yellow_suffix_snoc {A : Type} (b : yellow_buffer A) (x : A) :
   { b' : any_buffer A | any_buffer_seq b' = yellow_buffer_seq b ++ [x] } :=
 yellow_suffix_snoc (Yellowish buf) x with buf := {
-  yellow_suffix_snoc _ x (B1 a) => ? Any (B2 a x);
-  yellow_suffix_snoc _ x (B2 a b) => ? Any (B3 a b x);
-  yellow_suffix_snoc _ x (B3 a b c) => ? Any (B4 a b c x);
-  yellow_suffix_snoc _ x (B4 a b c d) => ? Any (B5 a b c d x)
+  | B1 a => ? Any (B2 a x);
+  | B2 a b => ? Any (B3 a b x);
+  | B3 a b c => ? Any (B4 a b c x);
+  | B4 a b c d => ? Any (B5 a b c d x)
 }.
 
 Equations buffer_cons {A : Type} {C : phantom} (x : A) (b : buffer A C) :
@@ -270,19 +270,19 @@ green_unsnoc (B3 a b c) => ? ((Yellowish (B2 a b)), c).
 Equations yellow_uncons {A : Type} (b : yellow_buffer A) :
   { '(x, b') : A * any_buffer A | yellow_buffer_seq b = x :: any_buffer_seq b' } :=
 yellow_uncons (Yellowish buf) with buf => {
-  yellow_uncons _ (B1 a) := ? (a, Any B0);
-  yellow_uncons _ (B2 a b) := ? (a, Any (B1 b));
-  yellow_uncons _ (B3 a b c) := ? (a, Any (B2 b c));
-  yellow_uncons _ (B4 a b c d) := ? (a, Any (B3 b c d))
+  | B1 a => ? (a, Any B0);
+  | B2 a b => ? (a, Any (B1 b));
+  | B3 a b c => ? (a, Any (B2 b c));
+  | B4 a b c d => ? (a, Any (B3 b c d))
 }.
 
 Equations yellow_unsnoc {A : Type} (b : yellow_buffer A) :
   { '(b', x) : any_buffer A * A | yellow_buffer_seq b = any_buffer_seq b' ++ [x] } :=
 yellow_unsnoc (Yellowish buf) with buf => {
-  yellow_unsnoc _ (B1 a) := ? (Any B0, a);
-  yellow_unsnoc _ (B2 a b) := ? (Any (B1 a), b);
-  yellow_unsnoc _ (B3 a b c) := ? (Any (B2 a b), c);
-  yellow_unsnoc _ (B4 a b c d) := ? (Any (B3 a b c), d)
+  | B1 a => ? (Any B0, a);
+  | B2 a b => ? (Any (B1 a), b);
+  | B3 a b c => ? (Any (B2 a b), c);
+  | B4 a b c d => ? (Any (B3 a b c), d)
 }.
 
 Equations buffer_uncons {A C} (b : buffer A C) :
